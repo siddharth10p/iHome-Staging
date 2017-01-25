@@ -3,6 +3,9 @@
  *
  *      Author          Created Date(mm-dd-yyyy)     version   Changelog
  * Siddharth Pandit      11/21/2016                   1.0      Initial Draft
+ * Siddharth Pandit      12/24/2017                   1.1      Clean the code, remove debugs
+                                                               added additional logic to exclude
+                                                               leads from the process
  * Liquid Planner: /space/118974/projects/show/30837040
  * Copyright © Peruto Solutions Inc.
  **/
@@ -87,10 +90,6 @@ public with sharing class MergeRecordsUtil {
                                Integer.valueOf (prevObj.get (STR_LEADSCORE)) : 0;
         Integer newObjScore = newObj.get (STR_LEADSCORE) != null ?
                               Integer.valueOf (newObj.get (STR_LEADSCORE)) : 0;
-        System.debug ('prevObjScore ==> '+prevObjScore);
-        System.debug ('newObjScore ==> '+newObjScore);
-        System.debug ('prevObj ==> '+Datetime.valueOf (prevObj.get (STR_CREATEDDATE)));
-        System.debug ('newObj ==> '+Datetime.valueOf (newObj.get (STR_CREATEDDATE)));
         if (prevObjScore == newObjScore)
             return (Datetime.valueOf (prevObj.get (STR_CREATEDDATE)) > 
                     Datetime.valueOf (newObj.get (STR_CREATEDDATE)));
@@ -177,18 +176,14 @@ public with sharing class MergeRecordsUtil {
         else {
             Sobject prevInstance =
                     masterObjTempMap.get (String.valueOf (objInstance.get (STR_EMAIL)));
-                System.debug ('prevInstance ==> '+prevInstance);
-                System.debug ('objInstance ==> '+objInstance);
             if (!String.valueOf (prevInstance.get (STR_ID))
                 .equals (String.valueOf (objInstance.get (STR_ID))) &&
             compareLeadScore (prevInstance, objInstance)) {
                 leadWithHighScore = prevInstance;
-                System.debug ('leadWithHighScore 193 ==> '+leadWithHighScore);
             } else {
                 masterObjTempMap.put (String.valueOf (objInstance.get (STR_EMAIL)),
                                         objInstance);
             }
-            System.debug ('masterObjTempMap ==> '+masterObjTempMap);
         }
         return leadWithHighScore;
      }
@@ -253,8 +248,6 @@ public with sharing class MergeRecordsUtil {
         emailSet.remove (null);
         System.debug ('emailSet ==> '+emailSet);
         List<Sobject> existingObjList = fetchMatchingRecords (emailSet);
-        System.debug ('existingObjList ==> '+existingObjList);
-        System.debug ('existingObjList size ==> '+existingObjList.size ());
         Map<String, Sobject> recIdObjMap = new Map<String, Sobject> ();
         List<String> strListToReturn = new List<String> ();
         Map<String, String> dupIdMasterIdMap = new Map<String, String> ();
@@ -269,10 +262,8 @@ public with sharing class MergeRecordsUtil {
             if (doNotMerge (objInstance)) doNotDelIdSet.add (objInstance.Id);
             Map<String, Sobject> strSobjMap;
             System.debug ('objInstance ==> '+objInstance);
-            System.debug ('recIdObjMap ==> '+recIdObjMap);
             if (recIdObjMap.containsKey (String.valueOf (objInstance.get (STR_EMAIL)))) {
                 Sobject prevObj = recIdObjMap.get (String.valueOf (objInstance.get (STR_EMAIL)));
-                System.debug ('prevObj ==> '+prevObj);
                 strSobjMap = checkRIDwithAccActive (prevObj, objInstance);
                 System.debug ('strSobjMap1 ==> '+strSobjMap);
                 if (strSobjMap == null || strSobjMap.isEmpty ()) {
@@ -305,12 +296,6 @@ public with sharing class MergeRecordsUtil {
                         dupIdMasterIdMap.put (String.valueOf (dupRec.get (STR_ID)),
                                                 String.valueOf (masterRec.get (STR_ID)));
                     }
-                  /*  if (!emailClIdMap.containsKey (String.valueOf (dupRec.get (STR_EMAIL))) ||
-                        (String.isNotBlank (String.valueOf (dupRec.get (STR_CLIENTID))) &&
-                        !emailClIdMap.get (String.valueOf (dupRec.get (STR_EMAIL)))
-                        .equals (String.valueOf (dupRec.get (STR_CLIENTID))))) */
-                    //emailClIdMap.put (String.valueOf (dupRec.get (STR_EMAIL)),
-                   //                   String.valueOf (dupRec.get (STR_CLIENTID)));
                 }
             }
             else
@@ -408,8 +393,6 @@ public with sharing class MergeRecordsUtil {
 
     // A method that merges the nonblank fields based off the master record
     private static Sobject mergeFieldValues (Sobject masterObj, Sobject dupObj) {
-        System.debug ('masterObj ==> '+masterObj);
-        System.debug ('dupObj ==> '+dupObj);
         for (Schema.FieldSetMember leadFields : getLeadFields()) {
             String fieldName = leadFields.getFieldPath ();
             if (STR_MSG.equalsIgnoreCase (fieldName) &&
