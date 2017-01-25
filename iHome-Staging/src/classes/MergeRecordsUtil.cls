@@ -218,7 +218,7 @@ public with sharing class MergeRecordsUtil {
 
     // A method that would check the RID is null and make high lead score as master
     private static Map<String, Sobject> mergeNonActiveRecs (Sobject prevObj, Sobject newObj) {
-        Map<String, Sobject> sobjMap;
+        Map<String, Sobject> sobjMap = new Map<String, Sobject> ();
         if (!checkRIDFiveOneOne (prevObj) && !checkRIDFiveOneOne (newObj) &&
             !checkRIDSevenTwoFive (prevObj) && !checkRIDSevenTwoFive (newObj) &&
             !checkRIDFiveSevenSeven (prevObj) && !checkRIDFiveSevenSeven (newObj) &&
@@ -238,12 +238,12 @@ public with sharing class MergeRecordsUtil {
 
     // A method that validates the fields are blank
     private static Boolean doNotMerge (Sobject objInstance) {
-        if (String.isNotBlank (String.valueOf (objInstance.get (affPrtnrSts))) ||
-            STR_NONE.equals (String.valueOf (objInstance.get (affPrtnrSts))) ||
-            String.isNotBlank (String.valueOf (objInstance.get (mslPrtnrSts))) ||
-            STR_NONE.equals (String.valueOf (objInstance.get (mslPrtnrSts))) ||
-            String.isNotBlank (String.valueOf (objInstance.get (resPrtnrSts))) ||
-            STR_NONE.equals (String.valueOf (objInstance.get (resPrtnrSts))))
+        if ((String.isNotBlank (String.valueOf (objInstance.get (affPrtnrSts))) &&
+            !STR_NONE.equals (String.valueOf (objInstance.get (affPrtnrSts)))) ||
+            (String.isNotBlank (String.valueOf (objInstance.get (mslPrtnrSts))) &&
+            !STR_NONE.equals (String.valueOf (objInstance.get (mslPrtnrSts)))) ||
+            (String.isNotBlank (String.valueOf (objInstance.get (resPrtnrSts))) &&
+            !STR_NONE.equals (String.valueOf (objInstance.get (resPrtnrSts)))))
             return true;
             return false;
     }
@@ -263,10 +263,10 @@ public with sharing class MergeRecordsUtil {
         masterObjTempMap = new Map<String, Sobject> ();
         List<Sobject> dupObjListToDel = new List<Sobject> ();
         Map<String, String> emailClIdMap = new Map<String, String> ();
+        Set<String> doNotDelIdSet = new Set<String> ();
         for (Sobject objInstance : existingObjList) {
-            if (checkAccActiveYes (objInstance))
-                mergeWithHighScore (objInstance);
-            if (doNotMerge (objInstance)) continue;
+            if (checkAccActiveYes (objInstance)) mergeWithHighScore (objInstance);
+            if (doNotMerge (objInstance)) doNotDelIdSet.add (objInstance.Id);
             Map<String, Sobject> strSobjMap;
             System.debug ('objInstance ==> '+objInstance);
             System.debug ('recIdObjMap ==> '+recIdObjMap);
@@ -297,18 +297,20 @@ public with sharing class MergeRecordsUtil {
                     System.debug ('masterRec ==> '+masterRec);
                     System.debug ('dupRec ==> '+dupRec);
                     String uniqueKey = String.valueOf (masterRec.get (STR_EMAIL)).toLowerCase();
-                    masterObjMapToUpdate.put (uniqueKey, mergeFieldValues (masterRec, dupRec));
-                    dupObjListToDel.add (dupRec);
-                    if (!emailClIdMap.containsKey (String.valueOf (dupRec.get (STR_EMAIL))) ||
+                    if (!doNotDelIdSet.contains (String.valueOf (dupRec.get (STR_ID)))) {
+                        masterObjMapToUpdate.put (uniqueKey, mergeFieldValues (masterRec, dupRec));
+                        dupObjListToDel.add (dupRec);
+                        strListToReturn.add (String.valueOf (dupRec.get (STR_EMAIL)+ STR_COMMA+ 
+                                STR_SPACE+ String.valueOf (dupRec.get (STR_CLIENTID))));
+                        dupIdMasterIdMap.put (String.valueOf (dupRec.get (STR_ID)),
+                                                String.valueOf (masterRec.get (STR_ID)));
+                    }
+                  /*  if (!emailClIdMap.containsKey (String.valueOf (dupRec.get (STR_EMAIL))) ||
                         (String.isNotBlank (String.valueOf (dupRec.get (STR_CLIENTID))) &&
                         !emailClIdMap.get (String.valueOf (dupRec.get (STR_EMAIL)))
-                        .equals (String.valueOf (dupRec.get (STR_CLIENTID)).toLowerCase())))
-                    strListToReturn.add (String.valueOf (dupRec.get (STR_EMAIL)+ STR_COMMA+ 
-                                STR_SPACE+ String.valueOf (dupRec.get (STR_CLIENTID))));
-                    emailClIdMap.put (String.valueOf (dupRec.get (STR_EMAIL)),
-                                      String.valueOf (dupRec.get (STR_CLIENTID)));
-                    dupIdMasterIdMap.put (String.valueOf (dupRec.get (STR_Id)),
-                                            String.valueOf (masterRec.get (STR_Id)));
+                        .equals (String.valueOf (dupRec.get (STR_CLIENTID))))) */
+                    //emailClIdMap.put (String.valueOf (dupRec.get (STR_EMAIL)),
+                   //                   String.valueOf (dupRec.get (STR_CLIENTID)));
                 }
             }
             else
