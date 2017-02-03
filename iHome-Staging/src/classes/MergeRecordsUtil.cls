@@ -244,12 +244,13 @@ public with sharing class MergeRecordsUtil {
     }
 
     // A method that checks dups and merge them
-    public static List<String> mergeRecords (Set<String> emailSet) {
+    public static String mergeRecords (Set<String> emailSet) {
         emailSet.remove (null);
         System.debug ('emailSet ==> '+emailSet);
         List<Sobject> existingObjList = fetchMatchingRecords (emailSet);
         Map<String, Sobject> recIdObjMap = new Map<String, Sobject> ();
         List<String> strListToReturn = new List<String> ();
+        String strToReturn = STR_INIT;
         Map<String, String> dupIdMasterIdMap = new Map<String, String> ();
         Sobject masterRec, dupRec;
         Map<String, Sobject> masterObjMapToUpdate = new Map<String, Sobject> ();
@@ -291,6 +292,8 @@ public with sharing class MergeRecordsUtil {
                     if (!doNotDelIdSet.contains (String.valueOf (dupRec.get (STR_ID)))) {
                         masterObjMapToUpdate.put (uniqueKey, mergeFieldValues (masterRec, dupRec));
                         dupObjListToDel.add (dupRec);
+                        strToReturn += String.valueOf (dupRec.get (STR_EMAIL)+ STR_COMMA+ 
+                           STR_SPACE+ String.valueOf (dupRec.get (STR_CLIENTID))) + STR_NEWLINE;
                         strListToReturn.add (String.valueOf (dupRec.get (STR_EMAIL)+ STR_COMMA+ 
                                 STR_SPACE+ String.valueOf (dupRec.get (STR_CLIENTID))));
                         dupIdMasterIdMap.put (String.valueOf (dupRec.get (STR_ID)),
@@ -304,7 +307,7 @@ public with sharing class MergeRecordsUtil {
         System.debug ('dupIdMasterIdMap ==> '+dupIdMasterIdMap);
         updateChildren (dupIdMasterIdMap); updateMasterObj (masterObjMapToUpdate);
         deleteDups (dupObjListToDel);
-        return strListToReturn;
+        return strToReturn;
     } // End method
 
     // A method that calls another one to update child records
@@ -321,7 +324,7 @@ public with sharing class MergeRecordsUtil {
 
     // A method that deletes dup
     private static void deleteDups (List<Sobject> listDups) {
-        if (!listDups.isEmpty ())
+       if (!listDups.isEmpty ())
             Database.delete (listDups, false);
     }
 
@@ -410,7 +413,8 @@ public with sharing class MergeRecordsUtil {
     }
 
     // A method that sends email
-    public static void sendEmail (List<String> removedObjList) {
+    public static void sendEmail (String pRemovedEmails) {
+        System.debug ('pRemovedEmails ==> '+pRemovedEmails);
         Messaging.SingleEmailMessage message = new Messaging.SingleEmailMessage();
         // Set recipients to two contact IDs.
         // Replace IDs with valid record IDs in your org.
@@ -421,8 +425,7 @@ public with sharing class MergeRecordsUtil {
         message.subject = 'List of deleted records in merge';
         message.plainTextBody = System.Label.MergeRecordsMsg+ STR_COLON+ STR_NEWLINE+ STR_NEWLINE;
         message.plainTextBody += 'Email;  ClientId'+ STR_NEWLINE;
-        for (String delRecord : removedObjList)
-             message.plainTextBody += delRecord + STR_NEWLINE;
+        message.plainTextBody += pRemovedEmails;
         Messaging.SingleEmailMessage[] messages = 
         new List<Messaging.SingleEmailMessage> {message};
             Messaging.SendEmailResult[] results = Messaging.sendEmail(messages);
