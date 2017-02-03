@@ -9,11 +9,8 @@
  **/
 global with sharing class MergeRecordsBatch implements Database.Batchable<Sobject>, 
                                                        Database.Stateful, Schedulable {
-    private List<String> removeSobjList;
-    private static Messaging.SingleEmailMessage message;
     private String removeEmails;
     global Database.Querylocator start(Database.BatchableContext BC) {
-        removeSobjList = new List<String> ();
         removeEmails = '';
         Integer maxRows = Test.isRunningTest() ? 10 : 50000000;
         return Database.getQueryLocator([ SELECT Id, Email
